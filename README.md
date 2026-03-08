@@ -15,6 +15,10 @@ short_description: "Ai Coach for interviews "
 
 An AI-powered interview simulator that conducts **realistic job interviews** and gives **honest, structured feedback**.
 
+## Testing on Huggingface:
+
+Link:https://huggingface.co/spaces/m3n99/Intervexa
+
 ## Features
 
 - 🎯 Pick your role, company type, and experience level
@@ -44,5 +48,5 @@ The interviewer persona is fully engineered via a dynamic system prompt that ada
 ## Tech Stack
 
 - **LLM**: LLaMA 3.3 70B (via Groq API)
-- **Interface**: Gradio 4.x
+- **Interface**: Gradio 6.x
 - **Hosting**: Hugging Face Spaces
