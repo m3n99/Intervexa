@@ -1,20 +1,37 @@
+import os
+
 import gradio as gr
 from groq import Groq
-import os
 
 client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 ROLES = [
-    "Software Engineer", "Frontend Developer", "Backend Developer",
-    "Full Stack Developer", "Flutter / Mobile Developer", "Mobile Engineer (iOS/Android)",
-    "ML / AI Engineer", "AI Product Engineer", "Data Analyst",
-    "Data Scientist", "DevOps / Cloud Engineer", "Product Manager", "UI/UX Designer",
+    "Software Engineer",
+    "Frontend Developer",
+    "Backend Developer",
+    "Full Stack Developer",
+    "Flutter / Mobile Developer",
+    "Mobile Engineer (iOS/Android)",
+    "ML / AI Engineer",
+    "AI Product Engineer",
+    "Data Analyst",
+    "Data Scientist",
+    "DevOps / Cloud Engineer",
+    "Product Manager",
+    "UI/UX Designer",
 ]
 COMPANY_TYPES = [
-    "FAANG / Big Tech (Google, Meta, Amazon…)", "Startup (fast-paced, generalist)",
-    "Mid-size Tech Company", "Bank / FinTech", "Consulting / Agency",
+    "FAANG / Big Tech (Google, Meta, Amazon…)",
+    "Startup (fast-paced, generalist)",
+    "Mid-size Tech Company",
+    "Bank / FinTech",
+    "Consulting / Agency",
 ]
-EXPERIENCE_LEVELS = ["Junior  (0 – 2 years)", "Mid-level  (2 – 5 years)", "Senior  (5 + years)"]
+EXPERIENCE_LEVELS = [
+    "Junior  (0 – 2 years)",
+    "Mid-level  (2 – 5 years)",
+    "Senior  (5 + years)",
+]
 MODEL = "llama-3.3-70b-versatile"
 
 
@@ -60,27 +77,30 @@ def build_system_prompt(role, company_type, experience):
     }
     company_key = next((k for k in company_profiles if k in company_type), None)
     level_key = next((k for k in level_profiles if k in experience), "Mid")
-    company = company_profiles.get(company_key, {
-        "focus": "Balance technical depth with communication, product thinking, and business impact.",
-        "culture": "Values well-rounded engineers who ship quality software.",
-        "red_flags": "Overcomplicating problems, poor communication, no concrete impact examples.",
-    })
+    company = company_profiles.get(
+        company_key,
+        {
+            "focus": "Balance technical depth with communication, product thinking, and business impact.",
+            "culture": "Values well-rounded engineers who ship quality software.",
+            "red_flags": "Overcomplicating problems, poor communication, no concrete impact examples.",
+        },
+    )
     level = level_profiles[level_key]
 
     return f"""You are a highly experienced technical interviewer conducting a realistic hiring interview.
 You are human, warm, and professional — not a robot. React naturally to what the candidate says.
 
 INTERVIEW CONTEXT
-Role: {role} | Level: {experience} ({level['depth']} depth) | Company: {company_type}
+Role: {role} | Level: {experience} ({level["depth"]} depth) | Company: {company_type}
 
 COMPANY PROFILE
-Focus:   {company['focus']}
-Culture: {company['culture']}
-Red Flags (watch silently, never mention): {company['red_flags']}
+Focus:   {company["focus"]}
+Culture: {company["culture"]}
+Red Flags (watch silently, never mention): {company["red_flags"]}
 
 EXPERIENCE EXPECTATIONS
-{level['note']}
-Key Signal: {level['signal']}
+{level["note"]}
+Key Signal: {level["signal"]}
 
 INTERVIEW FLOW
 1. Open with a brief natural greeting and ask the candidate to introduce themselves.
@@ -132,6 +152,8 @@ INTERVIEW FLOW
    Then add on a new line: "💡 Type 'my score', 'my evaluation', or 'hiring decision' to see your full report."
    Wait for the candidate to ask before showing the report.
 
+7. User can ending intreview anytime by typing 'end interview' or 'end' or 'finish'
+
 WHEN CANDIDATE ASKS FOR SCORE / EVALUATION / REPORT:
 Produce this report immediately:
 
@@ -167,7 +189,10 @@ RULES
 def call_groq(messages):
     try:
         response = client.chat.completions.create(
-            model=MODEL, messages=messages, max_tokens=900, temperature=0.7,
+            model=MODEL,
+            messages=messages,
+            max_tokens=900,
+            temperature=0.7,
         )
         return response.choices[0].message.content
     except Exception as e:
@@ -233,23 +258,33 @@ def start_interview(role, company_type, experience):
     try:
         opener = call_groq(msgs)
     except RuntimeError as e:
-        history = [{"role": "assistant", "content": f"⚠️ Failed to start interview: {e}"}]
+        history = [
+            {"role": "assistant", "content": f"⚠️ Failed to start interview: {e}"}
+        ]
         return (
-            history, "",
-            gr.update(interactive=False, placeholder="Click 'Start Interview' to retry…"),
+            history,
+            "",
+            gr.update(
+                interactive=False, placeholder="Click 'Start Interview' to retry…"
+            ),
             gr.update(interactive=False),
             gr.update(interactive=True),
-            gr.update(value="❌ Could not reach the AI service. Check your API key and internet connection."),
+            gr.update(
+                value="❌ Could not reach the AI service. Check your API key and internet connection."
+            ),
             gr.update(interactive=False),
             gr.update(interactive=False),
         )
     history = [{"role": "assistant", "content": opener}]
     return (
-        history, system_prompt,
+        history,
+        system_prompt,
         gr.update(interactive=True, placeholder="Type your answer…"),
         gr.update(interactive=True),
         gr.update(interactive=False),
-        gr.update(value=f"**Role:** {role}  |  **Company:** {company_type}  |  **Level:** {experience}"),
+        gr.update(
+            value=f"**Role:** {role}  |  **Company:** {company_type}  |  **Level:** {experience}"
+        ),
         gr.update(interactive=True),
         gr.update(interactive=True),
     )
@@ -279,13 +314,19 @@ def voice_reply(audio_path, history, system_prompt):
     except RuntimeError as e:
         history = history + [
             {"role": "user", "content": "🎤 (voice message)"},
-            {"role": "assistant", "content": f"⚠️ Could not transcribe your audio: {e}\n\nPlease try recording again or type your answer instead."},
+            {
+                "role": "assistant",
+                "content": f"⚠️ Could not transcribe your audio: {e}\n\nPlease try recording again or type your answer instead.",
+            },
         ]
         return history, None
     if not transcribed:
         history = history + [
             {"role": "user", "content": "🎤 (voice message)"},
-            {"role": "assistant", "content": "⚠️ Could not understand the audio. Please try recording again or type your answer instead."},
+            {
+                "role": "assistant",
+                "content": "⚠️ Could not understand the audio. Please try recording again or type your answer instead.",
+            },
         ]
         return history, None
     msgs = history_to_groq(system_prompt, history)
@@ -303,11 +344,14 @@ def voice_reply(audio_path, history, system_prompt):
 
 def reset_all():
     return (
-        [], "",
+        [],
+        "",
         gr.update(interactive=False, placeholder="Click 'Start Interview' first…"),
         gr.update(interactive=False),
         gr.update(interactive=True),
-        gr.update(value="Configure your interview on the left, then hit **Start Interview**."),
+        gr.update(
+            value="Configure your interview on the left, then hit **Start Interview**."
+        ),
         gr.update(interactive=False),
         gr.update(interactive=False),
     )
@@ -347,11 +391,23 @@ with gr.Blocks(title="Intervexa") as demo:
     with gr.Row(equal_height=False):
         with gr.Column(scale=1, min_width=260, elem_classes="panel"):
             gr.Markdown("### ⚙️ Interview Setup")
-            role_dd = gr.Dropdown(choices=ROLES, value="Software Engineer", label="Job Role")
-            company_dd = gr.Dropdown(choices=COMPANY_TYPES, value="FAANG / Big Tech (Google, Meta, Amazon…)", label="Company Type")
-            exp_dd = gr.Dropdown(choices=EXPERIENCE_LEVELS, value="Mid-level  (2 – 5 years)", label="Experience Level")
+            role_dd = gr.Dropdown(
+                choices=ROLES, value="Software Engineer", label="Job Role"
+            )
+            company_dd = gr.Dropdown(
+                choices=COMPANY_TYPES,
+                value="FAANG / Big Tech (Google, Meta, Amazon…)",
+                label="Company Type",
+            )
+            exp_dd = gr.Dropdown(
+                choices=EXPERIENCE_LEVELS,
+                value="Mid-level  (2 – 5 years)",
+                label="Experience Level",
+            )
             gr.Markdown("---")
-            start_btn = gr.Button("🚀 Start Interview", elem_classes="btn-start", variant="primary")
+            start_btn = gr.Button(
+                "🚀 Start Interview", elem_classes="btn-start", variant="primary"
+            )
             reset_btn = gr.Button("🔄 New Interview", elem_classes="btn-reset")
             gr.Markdown("""
 ---
@@ -365,36 +421,69 @@ with gr.Blocks(title="Intervexa") as demo:
         with gr.Column(scale=3):
             status_bar = gr.Markdown(
                 "Configure your interview on the left, then hit **Start Interview**.",
-                elem_id="status"
+                elem_id="status",
             )
             chatbot = gr.Chatbot(height=400, show_label=False, elem_classes="chatbot")
 
             with gr.Row():
                 msg_box = gr.Textbox(
                     placeholder="Click 'Start Interview' first…",
-                    label="", scale=5, interactive=False, container=False
+                    label="",
+                    scale=5,
+                    interactive=False,
+                    container=False,
                 )
-                send_btn = gr.Button("Send ↵", scale=1, interactive=False, variant="primary")
+                send_btn = gr.Button(
+                    "Send ↵", scale=1, interactive=False, variant="primary"
+                )
 
             gr.Markdown("— or answer with your voice —", elem_classes="voice-hint")
             gr.Markdown(
                 "⚠️ After recording, you will see the app is stuck — that is normal, it is processing. Wait ~10 seconds. Do NOT click twice!",
-                elem_classes="voice-warning"
+                elem_classes="voice-warning",
             )
 
             with gr.Row():
                 audio_input = gr.Audio(
-                    sources=["microphone"], type="filepath",
-                    label="🎤 Record your answer", interactive=False, scale=4
+                    sources=["microphone"],
+                    type="filepath",
+                    label="🎤 Record your answer",
+                    interactive=False,
+                    scale=4,
                 )
-                voice_send_btn = gr.Button("Send 🎤", scale=1, interactive=False, variant="secondary")
+                voice_send_btn = gr.Button(
+                    "Send 🎤", scale=1, interactive=False, variant="secondary"
+                )
 
-    all_outputs = [chatbot, system_prompt_state, msg_box, send_btn, start_btn, status_bar, audio_input, voice_send_btn]
+    all_outputs = [
+        chatbot,
+        system_prompt_state,
+        msg_box,
+        send_btn,
+        start_btn,
+        status_bar,
+        audio_input,
+        voice_send_btn,
+    ]
 
-    start_btn.click(start_interview, inputs=[role_dd, company_dd, exp_dd], outputs=all_outputs)
-    send_btn.click(user_reply, inputs=[msg_box, chatbot, system_prompt_state], outputs=[chatbot, msg_box])
-    msg_box.submit(user_reply, inputs=[msg_box, chatbot, system_prompt_state], outputs=[chatbot, msg_box])
-    voice_send_btn.click(voice_reply, inputs=[audio_input, chatbot, system_prompt_state], outputs=[chatbot, audio_input])
+    start_btn.click(
+        start_interview, inputs=[role_dd, company_dd, exp_dd], outputs=all_outputs
+    )
+    send_btn.click(
+        user_reply,
+        inputs=[msg_box, chatbot, system_prompt_state],
+        outputs=[chatbot, msg_box],
+    )
+    msg_box.submit(
+        user_reply,
+        inputs=[msg_box, chatbot, system_prompt_state],
+        outputs=[chatbot, msg_box],
+    )
+    voice_send_btn.click(
+        voice_reply,
+        inputs=[audio_input, chatbot, system_prompt_state],
+        outputs=[chatbot, audio_input],
+    )
     reset_btn.click(reset_all, outputs=all_outputs)
 
 if __name__ == "__main__":
